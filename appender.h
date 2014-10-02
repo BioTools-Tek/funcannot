@@ -102,7 +102,7 @@ public:
     QStringList getLists(QString &chr, quint64 &bpos, QStringList &genelist,
                               QString &VALT, QString &VREF, int vrlen, int valen, bool &isSNV, bool &isDel, QString &rejects_per_line);
 
-    QString antonorakis(QList<int> &data, bool &direction, quint64 &bpos, QString &VREF, QString &VALT,
+    QString antonorakis(ExonData *data, bool &direction, quint64 &bpos, QString &VREF, QString &VALT,
                                   QString &ref_codon, QString &alt_codon,
                                   bool &isSNV, bool &isDel , quint64 &next_codon_bpos);
 
@@ -163,6 +163,8 @@ public:
                 QStringList FORMAT = tokes[FORMAT_INDEX].split(':');
                 QStringList IFORMAT = tokes[INDIV_START_INDEX].split(':');
 
+//                cerr << "IFORMAT == " << tokes[INDIV_START_INDEX].toUtf8().data() << endl;
+
                 // Chromosomes dont match, update FASTA
                 // update indexes too
                 if (current_chr!=chr){
@@ -172,6 +174,9 @@ public:
                     GENES_INDEX = FORMAT.indexOf(G_id);
                     TYP_INDEX = FORMAT.indexOf(T_id);
                 }
+
+//                cerr << "T_ID == " << T_id.toUtf8().data() << endl;
+//                cerr << "T_INDEX == " << TYP_INDEX << endl;
 
                 if ((GENES_INDEX == -1) || ( TYP_INDEX == -1)){
                     cerr << "\n[Error] Could not find " << G_id.toUtf8().data() << " or " << T_id.toUtf8().data() << flush;
@@ -198,6 +203,13 @@ public:
 
                 QStringList genelist = IFORMAT[GENES_INDEX].split(',');
                 bool isSNV = IFORMAT[TYP_INDEX].trimmed()=="SNV";
+
+//                if (!isSNV){
+//                    cerr << "\nNot a SNV:\n" << chr.toUtf8().data() << "  " << pos << endl;
+//                    cerr << IFORMAT[TYP_INDEX].trimmed().toUtf8().data() << endl;
+//                    exit(-1);
+//                }
+
                 bool isDel = (!isSNV && VALT.length()==1);
 
                 QString rejects_per_line=" "; //collects bad genes/introns/references etc

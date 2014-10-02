@@ -217,7 +217,19 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         }
         else directionlist.append("+,");
 
-        QStringList cnom_pnom_proteins = antonorakis(gs->exon_positions[Exon_number], gc->forward, bpos, VREF, VALT, ref_codon, alt_codon, isSNV, isDel, next_ref_codon_index ).split("||");
+        //This method counts from the start of the current exon
+//        QStringList cnom_pnom_proteins = antonorakis(gs->exon_positions[Exon_number], gc->forward, bpos, VREF, VALT, ref_codon, alt_codon, isSNV, isDel, next_ref_codon_index ).split("||");
+
+        //New method counts from start of coding sequence (first/last exon)
+          QStringList cnom_pnom_proteins = antonorakis(
+                      gs->exon_positions.value(Exon_number),
+                      gc->forward,
+                      bpos,
+                      VREF, VALT,
+                      ref_codon, alt_codon,
+                      isSNV, isDel,
+                      next_ref_codon_index ).split("||");
+
 
         codon_change_list.append(cnom_pnom_proteins[0]+',');
         codonlist.append(BSta+ref_codon+' '+alt_codon+BEnd+',');
@@ -291,21 +303,29 @@ QString Appender::p_nomenclature(quint64 &bpos, int &position, QString &ref_prot
 
 }
 
-QString Appender::antonorakis(QList<int> &data, bool &direction, quint64 &bpos,
+QString Appender::antonorakis(
+       ExonData *current_exon, bool &direction, quint64 &bpos,
                               QString &VREF, QString &VALT,
                               QString &ref_codon, QString &alt_codon,
                               bool &isSNV, bool &isDel,
                               quint64 &next_codon_bpos)
 {
+    //Exon data:
+    // [#Exon] -->
+       // [pos1,
+       //  pos2,
+       //  cumulative coding length from 5->3,
+       //  cumulative from 3->5]
+
     int coding_pos = -1; //coding position
 
     if(!direction){ // reverse
-        int rollover = data[3]-(data[1]-data[0]); // #coding up to end of current exon (measuring from 3->5)
-        coding_pos = (data[1]-bpos) + rollover + 1;  // coding from end to current
+        t_exon rollover = current_exon->three_to_five - (current_exon->end-current_exon->start); // #coding up to end of current exon (measuring from 3->5)
+        coding_pos = (current_exon->end-bpos) + rollover + 1;  // coding from end to current
     }
     else {
-        int rollover = data[2]-(data[1]-data[0]);   // #coding up to beginning of current exon
-        coding_pos = (bpos - data[0]) + rollover;   //coding from start to current
+        t_exon rollover = current_exon->five_to_three-(current_exon->end - current_exon->start);   // #coding up to beginning of current exon
+        coding_pos = (bpos - current_exon->start) + rollover;   //coding from start to current
     }
     int protein_position = ((coding_pos-1)/3) + 1; // same for both directions (start point changes that's all, calculation same)
 

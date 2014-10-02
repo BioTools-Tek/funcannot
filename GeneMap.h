@@ -3,6 +3,9 @@
 
 #include "ProteinHandler.h"
 
+typedef uint t_exon;
+//typedef QList<t_exon> exondata;
+
 //FOR ALL
 static uint countlines(QString file){
     uint lines=0;
@@ -28,43 +31,88 @@ static void progress(const char * filename, int tab, int progress){
 }
 
 
+class ExonData{
+public:
+    t_exon start, end, five_to_three, three_to_five;
+
+    ExonData(t_exon start_int, t_exon end_int, t_exon f_t_t, t_exon t_t_f){
+        start = start_int;
+        end = end_int;
+        five_to_three = f_t_t;
+        three_to_five = t_t_f;
+    }
+};
+
+
 /** Reference object that each exon (GeneContainer) points to **/
+
 class GeneStats{
+
+#define DEBUG
+
 public:
     QString gene;
 
-    QMap<int,QList<int> > exon_positions;
-    // [#Exon] --> [pos1, pos2, cumulative coding length from 5->3, cumulative from 3->5]
+    QMap<int,ExonData *> exon_positions;
+    // [#Exon] --> [
+      //  pos1, pos2,
+      //  cumulative coding length from 5->3,
+      //  cumulative from 3->5]
+    //
 
     GeneStats(QString gene){ this->gene = gene; }
 
-    void insertExon(int exon_num, int pos1, int pos2){
+    void insertExon(t_exon exon_num, t_exon pos1, t_exon pos2){
+
         if (exonExists(exon_num)){
             cerr << "Exon already exists!" << gene.toUtf8().data() << "--" << exon_num << endl;
         } else {
-            int diff= pos2 - pos1;
-            int rollover = diff;
+            t_exon diff= pos2 - pos1;
+            t_exon rollover = diff;
+
+//            cerr << this->gene.toUtf8().data() << endl;
+//            cerr << exon_num << endl;
 
             //Carry on count for 5->3'
             if (exonExists(exon_num-1)){
-                int previous_diff = exon_positions[exon_num-1][2];
+                t_exon previous_diff = exon_positions.value(exon_num-1)->five_to_three;
                 rollover += previous_diff;
             }
 
             //Update the cumulative 3->5 field for each exon below this
-            int prev_index = exon_num-1;
+            t_exon prev_index = exon_num-1;
             while (exonExists(prev_index)){
-                exon_positions[prev_index][3] += diff;
+                exon_positions.value(prev_index)->three_to_five += diff;
                 prev_index --;
             }
 
-            QList<int> data;
-            data.append(pos1);
-            data.append(pos2);
-            data.append(rollover); //cumulative total, including the current exon
-            data.append(diff);
+            ExonData *data = new ExonData(pos1, pos2, rollover, diff);
+//            data->start = pos1;
+//            data->end = pos2;
+//            data->five_to_three = rollover;
+//            data->three_to_five = diff;
+
             exon_positions[exon_num] = data;
+
         }
+
+#ifdef DEBUG
+        if (this->gene.startsWith("PLA2R1")){
+
+            cerr << this->gene.toUtf8().data() << endl;
+            //DEBUG
+            for(int i=1; i<exon_positions.size(); i++){
+                ExonData *exon = exon_positions.value(i);
+
+                cerr << "|Exon" << i << flush;
+                cerr << ": pos1=" << exon->start << flush;
+                cerr << ", pos2=" << exon->end << flush;
+                cerr << ", 5->3(tot)=" << exon->five_to_three << flush;
+                cerr << ", 3->5(tot)=" << exon->three_to_five << endl;
+            }
+            cerr << endl;
+        }
+#endif
     }
 
     bool exonExists(int exon_number){

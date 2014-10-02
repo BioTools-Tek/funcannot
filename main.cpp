@@ -1,4 +1,4 @@
-#define VERS "v0.8"
+#define VERS "v1.0"
 
 #define G_ARG "--geneid="
 #define T_ARG "--typid="
@@ -41,6 +41,12 @@ int main(int argc, char *argv[])
     QString gmp_file = argv[2];
     QString dna_file = argv[3];
     QString fas_folder = argv[4];
+
+    QString opt_G = QString(argv[5]).split('=')[0].trimmed()+'=';
+    QString opt_T = QString(argv[6]).split('=')[0].trimmed()+'=';
+
+    if (opt_G!=G_ARG){cerr << "should be '" << G_ARG << "' here" << endl; exit(-1);}
+    if (opt_T!=T_ARG){cerr << "should be '" << T_ARG << "' here" << endl; exit(-1);}
 
     QString G_id = QString(argv[5]).split(G_ARG)[1].trimmed();
     QString T_id = QString(argv[6]).split(T_ARG)[1].trimmed();
