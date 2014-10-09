@@ -48,7 +48,14 @@ public:
 
 class GeneStats{
 
-#define DEBUG
+//#define DEBUGGENE "ADAM15-ISOF2"
+#define DEBUGGENE "PLA2R1-ISOF1"
+
+#define debuggene(prefix, name,exon,start,stop,ft3,tt5) \
+ if (name.startsWith(DEBUGGENE))\
+    fprintf(stderr, "%s  %s Ex%02d [%9d,%9d]  (5>3) %6d, (3>5) %6d\n", prefix, name.toUtf8().data(), exon, start, stop, ft3, tt5); \
+ else (void)0
+
 
 public:
     QString gene;
@@ -62,13 +69,11 @@ public:
 
     GeneStats(QString gene){ this->gene = gene; }
 
-    void insertExon(t_exon exon_num, t_exon pos1, t_exon pos2){
+    void insertExon(t_exon exon_num, t_exon pos1, t_exon pos2)
+    {
 
-#ifdef DEBUG
-        if (this->gene.startsWith("PLA2R1")){
-            cerr << "Inserting: Exon" << exon_num << " [ " << pos1 << " - " << pos2 << "]" << endl;
-        }
-#endif
+        bool forward = true;
+        if ((exon_num > 1 && !exonExists(exon_num-1)) || (exon_num <= 1 && exon_positions.size()>1)) forward = false;
 
         if (exonExists(exon_num)){
 //            cerr << "Exon already exists!" << gene.toUtf8().data() << "--" << exon_num << endl;
@@ -79,17 +84,20 @@ public:
 //            cerr << this->gene.toUtf8().data() << endl;
 //            cerr << exon_num << endl;
 
-            //Carry on count for 5->3'
+           //Carry on count for 5->3'
+            t_exon previous_exon_number = exon_num + (forward?-1:+1);
+
             if (exonExists(exon_num-1)){
-                t_exon previous_diff = exon_positions.value(exon_num-1)->five_to_three;
+                t_exon previous_diff = exon_positions.value(previous_exon_number)->five_to_three;
                 rollover += previous_diff;
             }
 
             //Update the cumulative 3->5 field for each exon below this
-            t_exon prev_index = exon_num-1;
+            t_exon prev_index = previous_exon_number;
+
             while (exonExists(prev_index)){
-                exon_positions.value(prev_index)->three_to_five += diff;
-                prev_index --;
+              exon_positions.value(prev_index)->three_to_five += diff;
+              forward?prev_index --:prev_index++;
             }
 
             ExonData *data = new ExonData(pos1, pos2, rollover, diff);
@@ -98,27 +106,18 @@ public:
 //            data->five_to_three = rollover;
 //            data->three_to_five = diff;
 
-            exon_positions[exon_num] = data;
+            debuggene("-->Inserted:",gene, exon_num, pos1, pos2, rollover, diff);
+            exon_positions[exon_num] = data; //stores pointer
 
+            //DEBUG: Works for forward encoded genes
+            t_exon start_index = 0;
+            while (!exonExists(++start_index) && start_index <= 50 );
+
+            do {
+                ExonData *prev = exon_positions.value(start_index);
+                debuggene("exExists:",gene, start_index, prev->start, prev->end, prev->five_to_three, prev->three_to_five);
+            } while (exonExists(++start_index));
         }
-
-#ifdef DEBUG
-        if (this->gene.startsWith("PLA2R1")){
-
-            cerr << this->gene.toUtf8().data() << endl;
-            //DEBUG
-            for(int i=1; i<exon_positions.size(); i++){
-                ExonData *exon = exon_positions.value(i);
-
-                cerr << "|Exon" << i << flush;
-                cerr << ": pos1=" << exon->start << flush;
-                cerr << ", pos2=" << exon->end << flush;
-                cerr << ", 5->3(tot)=" << exon->five_to_three << flush;
-                cerr << ", 3->5(tot)=" << exon->three_to_five << endl;
-            }
-            cerr << endl;
-        }
-#endif
     }
 
     bool exonExists(t_exon exon_number){
@@ -206,18 +205,17 @@ private:
                     if (exon_splice.length()>1)
                     {
                         if (exon_splice[0].trimmed().startsWith("Exon")) exon=true;
-                            if (exon_splice[1].trimmed().startsWith("Splice")) splice=true;
+
+                        for(int si=1; si< exon_splice.size(); si++){
+                            if (exon_splice[si].trimmed().startsWith("Splice")) {
+                                splice=true; break;
+                            }
+                        }
                     }
                     else exon=true;
                 } else exon = true; // single gene name
 
 //                cerr << "gene=" << name.toUtf8().data() << ", exon=" << exon << ", splice=" << splice << endl;
-
-
-#define debuggene(prefix, name,exon,start,stop) {\
-    if(name.startsWith(name)){\
-        cerr << prefix << "  " << name.toUtf8().data() << 
-                }
 
 
                 if (exon && !splice){
