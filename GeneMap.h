@@ -53,7 +53,7 @@ class GeneStats{
 public:
     QString gene;
 
-    QMap<int,ExonData *> exon_positions;
+    QMap<t_exon,ExonData *> exon_positions;
     // [#Exon] --> [
       //  pos1, pos2,
       //  cumulative coding length from 5->3,
@@ -64,8 +64,14 @@ public:
 
     void insertExon(t_exon exon_num, t_exon pos1, t_exon pos2){
 
+#ifdef DEBUG
+        if (this->gene.startsWith("PLA2R1")){
+            cerr << "Inserting: Exon" << exon_num << " [ " << pos1 << " - " << pos2 << "]" << endl;
+        }
+#endif
+
         if (exonExists(exon_num)){
-            cerr << "Exon already exists!" << gene.toUtf8().data() << "--" << exon_num << endl;
+//            cerr << "Exon already exists!" << gene.toUtf8().data() << "--" << exon_num << endl;
         } else {
             t_exon diff= pos2 - pos1;
             t_exon rollover = diff;
@@ -115,7 +121,7 @@ public:
 #endif
     }
 
-    bool exonExists(int exon_number){
+    bool exonExists(t_exon exon_number){
         return exon_positions.contains(exon_number);
     }
 };
@@ -174,7 +180,8 @@ private:
                 QString name = tokens[3].trimmed();
                 QString chr = tokens[0].trimmed();
 
-                int pos1 = tokens[1].toInt(), pos2 = tokens[2].toInt();
+                t_exon pos1 = tokens[1].toInt();
+                t_exon pos2 = tokens[2].toInt();
 
                 GeneContainer *g = new GeneContainer(
                         name,                        // Name
@@ -205,6 +212,13 @@ private:
                 } else exon = true; // single gene name
 
 //                cerr << "gene=" << name.toUtf8().data() << ", exon=" << exon << ", splice=" << splice << endl;
+
+
+#define debuggene(prefix, name,exon,start,stop) {\
+    if(name.startsWith(name)){\
+        cerr << prefix << "  " << name.toUtf8().data() << 
+                }
+
 
                 if (exon && !splice){
                     // Update GeneCDS positions
