@@ -1,6 +1,8 @@
 #ifndef GENEMAP_H
 #define GENEMAP_H
 
+//#define DEBUG
+
 #include "ProteinHandler.h"
 
 typedef uint t_exon;
@@ -48,14 +50,17 @@ public:
 
 class GeneStats{
 
-//#define DEBUGGENE "ADAM15-ISOF2"
-#define DEBUGGENE "PLA2R1-ISOF1"
 
-#define debuggene(prefix, name,exon,start,stop,ft3,tt5) \
+#ifdef DEBUG
+    #define DEBUGGENE "ADAM15-ISOF2"
+    #define DEBUGGENE "PLA2R1-ISOF1"
+
+    #define debuggene(prefix, name,exon,start,stop, diff, ft3,tt5) \
  if (name.startsWith(DEBUGGENE))\
-    fprintf(stderr, "%s  %s Ex%02d [%9d,%9d]  (5>3) %6d, (3>5) %6d\n", prefix, name.toUtf8().data(), exon, start, stop, ft3, tt5); \
+    fprintf(stderr, "%s %s Ex%02d [%9d-%9d =%4d] %5d(5>3) %5d(3>5)\n", prefix, name.toUtf8().data(), exon, start, stop, diff, ft3, tt5); \
  else (void)0
 
+#endif
 
 public:
     QString gene;
@@ -78,7 +83,7 @@ public:
         if (exonExists(exon_num)){
 //            cerr << "Exon already exists!" << gene.toUtf8().data() << "--" << exon_num << endl;
         } else {
-            t_exon diff= pos2 - pos1;
+            const t_exon diff= pos2 - pos1;
             t_exon rollover = diff;
 
 //            cerr << this->gene.toUtf8().data() << endl;
@@ -87,7 +92,7 @@ public:
            //Carry on count for 5->3'
             t_exon previous_exon_number = exon_num + (forward?-1:+1);
 
-            if (exonExists(exon_num-1)){
+            if (exonExists(previous_exon_number)){
                 t_exon previous_diff = exon_positions.value(previous_exon_number)->five_to_three;
                 rollover += previous_diff;
             }
@@ -101,22 +106,22 @@ public:
             }
 
             ExonData *data = new ExonData(pos1, pos2, rollover, diff);
-//            data->start = pos1;
-//            data->end = pos2;
-//            data->five_to_three = rollover;
-//            data->three_to_five = diff;
 
-            debuggene("-->Inserted:",gene, exon_num, pos1, pos2, rollover, diff);
+#ifdef DEBUG
+            debuggene("-->Inserted:",gene, exon_num, pos1, pos2, diff, rollover, diff);
+#endif
             exon_positions[exon_num] = data; //stores pointer
 
+#ifdef DEBUG
             //DEBUG: Works for forward encoded genes
             t_exon start_index = 0;
             while (!exonExists(++start_index) && start_index <= 50 );
 
             do {
                 ExonData *prev = exon_positions.value(start_index);
-                debuggene("exExists:",gene, start_index, prev->start, prev->end, prev->five_to_three, prev->three_to_five);
+                debuggene("exExists:",gene, start_index, prev->start, prev->end, prev->end-prev->start,  prev->five_to_three, prev->three_to_five);
             } while (exonExists(++start_index));
+#endif
         }
     }
 
