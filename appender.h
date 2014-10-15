@@ -117,7 +117,7 @@ public:
              int tabcount,
              GeneMap &map, ProteinHandler &prh)
     {
-        QString prefix = vcf_file.split('/').last().split('_')[0];
+        QString prefix = ((vcf_file.contains('/'))?vcf_file.split('/').last():vcf_file).split('_')[0];
         const char * prefs = prefix.toUtf8().data();
 
         (outputs = new QFile(outfold+'/'+prefix+"_funcannots.vcf"))->open(QIODevice::WriteOnly);
@@ -148,6 +148,9 @@ public:
 
             while (!in.atEnd())
             {
+//                cerr << line.toUtf8().data() << endl;
+
+
                 //FILE number (i.e. first, second, third ,etc) corresponds to num tabs -- do a macro for this
                 // also rejects should appear in same line possibly with [sympton] -- DONE
 
@@ -196,6 +199,7 @@ public:
                 newformat.chop(1); // remove last colon
                 tokes[FORMAT_INDEX] = newformat;
 
+
                 //Grab VCF reference, VCF alt, FASTA reference
                 QString VREF = tokes[3].trimmed();
                 QString VALT = tokes[4].trimmed();
@@ -212,6 +216,7 @@ public:
 
                 bool isDel = (!isSNV && VALT.length()==1);
 
+
                 QString rejects_per_line=" "; //collects bad genes/introns/references etc
 
                 if (VREF[0]!=FREF[0]){
@@ -220,7 +225,16 @@ public:
                                             +" differ in first letter, converting to upper and ignoring],");
                 }
                 //directions, codons, proteins, mutations
+
+//                cerr << "gettinglists" << endl;
+
+//                cerr << chr.toUtf8().data() << " " << pos << " [" << flush;
+//                for (int i=0; i< genelist.length(); i++) cerr << " " << genelist[i].toUtf8().data() << flush;
+//                cerr << "] " << VALT.toUtf8().data() << "=" << VREF.toUtf8().data() << " (" << VREF.length() << "," << VALT.length() << ")" << isSNV << " " << isDel << " " << rejects_per_line.toUtf8().data() << endl;
+
                 QStringList d_c_p_m_ch_ph = getLists(chr, pos, genelist, VALT, VREF, VREF.length(), VALT.length(), isSNV, isDel, rejects_per_line);
+
+//                cerr << "gotlists" << endl;
 
 //                cerr << '\n' << line.toUtf8().data() << endl;
                 //Add lists to IFORMAT

@@ -166,10 +166,11 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
     for (int g=0; g < genelist.length(); g++){
         QString gene = genelist[g].trimmed();
         QString just_gene= gene;
-        int Exon_number=-1;
+        t_exon Exon_number=-1;
 
         //Intron check
         if (gene.contains('|')){
+
             QStringList gene_extra = gene.split('|');
             just_gene = gene_extra[0];
 
@@ -178,7 +179,18 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
                 skipbad;
             }
             else if (gene_extra[1].startsWith("Exon")){
-                Exon_number = gene_extra[1].split("Exon")[1].toInt();
+//                cerr << "\ngot here" << endl;
+
+                QString num_extra = gene_extra[1].split("Exon")[1];
+                if(num_extra.contains("_")){
+                    // Skip UTR and Splice, only dealing with coding variants;
+//                    cerr << num_extra[1].trimmed().right(3).toUtf8().data() << endl;
+//                    if (num_extra[1].trimmed().right(3)=="UTR"){skipbad;}
+                    skipbad;
+                }
+
+                Exon_number = num_extra.toInt();
+                //cerr << "EXON_NUMBER=" << Exon_number << endl;
             }
         }
 
@@ -189,6 +201,7 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
 
         GeneContainer *gc = genemap[chr][gene];
         GeneStats *gs = genestats[chr][just_gene];
+
 
         // If we assume that exonFrames refers to previous exon in terms of position, and not direction:
 
@@ -206,7 +219,6 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         QString ref_codon = getRefCodon(gc->forward, ref_index, bpos);
         QString alt_codon = getAltCodon(gc->forward, ref_index, isSNV, isDel, ref_codon, VALT, vrlen, valen, bpos);
 
-
         quint64 next_ref_codon_index = bpos+(3-ref_index); // where the NEXT codon is on the reference
 
         //If reverse, then must complement:
@@ -217,11 +229,17 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         }
         else directionlist.append("+,");
 
+
+//        cerr << "YES6" << endl;
+
         //This method counts from the start of the current exon
 //        QStringList cnom_pnom_proteins = antonorakis(gs->exon_positions[Exon_number], gc->forward, bpos, VREF, VALT, ref_codon, alt_codon, isSNV, isDel, next_ref_codon_index ).split("||");
 
         //New method counts from start of coding sequence (first/last exon)
-          QStringList cnom_pnom_proteins = antonorakis(
+
+//        cerr << "Exon_number:" << Exon_number << endl;
+
+        QStringList cnom_pnom_proteins = antonorakis(
                       gs->exon_positions.value(Exon_number),
                       gc->forward,
                       bpos,
@@ -231,8 +249,12 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
                       next_ref_codon_index ).split("||");
 
 
+//        cerr << "YES7" << endl;
+
         codon_change_list.append(cnom_pnom_proteins[0]+',');
         codonlist.append(BSta+ref_codon+' '+alt_codon+BEnd+',');
+
+  //      cerr << "YES8" << endl;
 
         QStringList proteins = cnom_pnom_proteins[2].split(' ');
         QString &ref_protein = proteins[0], &alt_protein = proteins[1];
@@ -317,6 +339,15 @@ QString Appender::antonorakis(
        //  cumulative coding length from 5->3,
        //  cumulative from 3->5]
 
+//    cerr << direction << " " << bpos << " " << VREF.toUtf8().data() << " " << VALT.toUtf8().data() << " -- "
+//         << ref_codon.toUtf8().data() << " " << alt_codon.toUtf8().data() << " - " << isSNV << " " << isDel << "   " << next_codon_bpos << endl;
+
+
+//    cerr << "Exon start:" << current_exon->start << endl;
+//    cerr << "Exon end:" << current_exon->end << endl;
+//    cerr << "Exon 5'3:" << current_exon->five_to_three << endl;
+//    cerr << "Exon 3'5:" << current_exon->three_to_five << endl;
+
     int coding_pos = -1; //coding position
 
     if(!direction){ // reverse
@@ -326,8 +357,13 @@ QString Appender::antonorakis(
     else {
         t_exon rollover = current_exon->five_to_three-(current_exon->end - current_exon->start);   // #coding up to beginning of current exon
         coding_pos = (bpos - current_exon->start) + rollover;   //coding from start to current
+
+//        cerr << "rollover=" << rollover << ", coding_pos=" << coding_pos << endl;
     }
+//    cerr << "HEREAGAIN" << endl;
     int protein_position = ((coding_pos-1)/3) + 1; // same for both directions (start point changes that's all, calculation same)
+
+
 
     //Check proteins
     QStringList proteinRA = ph->codons2Proteins(ref_codon, alt_codon).split(',');
