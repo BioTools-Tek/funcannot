@@ -1,4 +1,4 @@
-#define VERS "v1.1"
+#define VERS "v1.3"
 
 #define G_ARG "--geneid="
 #define T_ARG "--typid="

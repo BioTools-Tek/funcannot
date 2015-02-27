@@ -316,7 +316,7 @@ QString Appender::p_nomenclature(quint64 &bpos, int &position, QString &ref_prot
         next_three += 3;
     }
 
-    quint64 leftover = bpos+valen - next_three;
+    //quint64 leftover = bpos+valen - next_three;
 //    cerr << "Leftover for insertion:" << leftover << endl;
 
     return   "p."+ref_p+QString::number(position)+'_'\

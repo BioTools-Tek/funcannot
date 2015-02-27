@@ -22,4 +22,5 @@ HEADERS += \
     appender.h \
     ProteinHandler.h \
     GeneMap.h \
-    FASTAhandler.h
+    FASTAhandler.h \
+    GeneStructs.h

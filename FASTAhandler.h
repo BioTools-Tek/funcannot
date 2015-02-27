@@ -42,8 +42,10 @@ public:
         quint64 base_row = rows*sym_per_row;
         uint cols = bpos - base_row;
 
+#ifdef DEBUG
         if (printRC)
             return QString("[row=").append(QString::number(rows+2)).append(" col=").append(QString::number(cols)).append(']');
+#endif
 
         quint64 chars = offset + base_row + rows + cols;
         if (FAST_FILE->isOpen())
@@ -54,24 +56,23 @@ public:
         }
         // the default FASTA->read(3) may contain newlines and introns, need to skip
 
-        QString res="";
 
-        bool first_char=true;
+        QString res="";
         // If the first character is lower case, move backwards until it finds an uppercase one and then resume search
         // but only if seekbackfirstchar is true.
+        bool first_char=true;
 
-        while (length > 0){
+        while (length > 0){                                         // Decr --> rez
             QChar base = FASTA->read(1)[0];
-            //Skip new lines
-            if (base=='\n') continue;
 
-            //Skip introns (only want coding)
-            QChar base_upper = base.toUpper();
+            if (base=='\n') continue;                               // FASTA chars only
+
+            QChar base_upper = base.toUpper();                      // Introns skipped (only want coding)
             if (base!=base_upper) {
                 if (seekbackfirstchar && first_char){
-                    chars -= 2; //move back one character (2 to counter each read which shift pos forward)
-                    FASTA->seek(chars);
-                }
+                    chars -= 2;                                     // move back one character
+                    FASTA->seek(chars);                             // (2 to counter each read
+                }                                                   //  which shift pos forward)
                 continue;
             }
             res.append(base);
