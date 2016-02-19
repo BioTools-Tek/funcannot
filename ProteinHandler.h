@@ -103,7 +103,7 @@ public:
         if (letter) protein = symbol_map.value(protein,defval);
 
         if (protein == defval){
-            cerr << "Could not find key= "
+            cerr << "Could not find key1= "
                  << codon_upper.toUtf8().data() << endl;
             exit(-1);
         }
@@ -115,6 +115,7 @@ public:
         QChar defval='@';
         QString symbol = symbol_map.value(protein,defval);
         if (symbol!=defval) return symbol;
+
         cerr << "Could not find key for:" << protein.toUtf8().data() << endl;
         exit(-1);
     }
@@ -138,7 +139,7 @@ public:
         }
 
         if ((ref_protein == defval) || (alt_protein == defval)){
-            cerr << "Could not find key= "
+            cerr << "Could not find key2= "
                  << REF_codon.toUtf8().data() << ','
                  << ALT_codon.toUtf8().data() << endl;
             exit(-1);

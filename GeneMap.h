@@ -7,7 +7,7 @@
 
 
 // Used to parse headers in GeneMap
-#define HEAD_CHROM "CHROM"
+#define HEAD_CHROM "#CHROM"
 #define HEAD_START "START"
 #define HEAD_STOP  "STOP"
 #define HEAD_GINF  "GENEINFO"
@@ -67,6 +67,8 @@ private:
 
             //Process headers --> populate column map
             mapHeaders(in.readLine());
+
+            cerr << "-Map:" << flush;
 
             while (!in.atEnd())
             {
@@ -128,7 +130,7 @@ private:
                         (Gene_Stats[chr][nameref] = new GeneStats(nameref))->insertExon(Exon_number, pos1, pos2);
                     }
                 }
-                if (++cnt%15321==0) progress("Map", 0, 100*cnt/numlines);
+                if (++cnt%15321==0) progress(100*cnt/numlines);
             }
 
             //THAR BE SPACE BUGS HERE YAR!
@@ -137,7 +139,9 @@ private:
 //                 << ree->exon_positions[2][0] << "-" << ree->exon_positions[2][1]
 //                 << "==" << ree->exon_positions[2][2] << endl;
 //            exit(-1);
-            progress("Map", 0, 100);
+            progress(100);
+            cerr << endl;
+
             inputFile.close();
         }
     }

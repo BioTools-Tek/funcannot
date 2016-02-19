@@ -22,12 +22,8 @@ static uint countlines(QString file){
     inputFile.close();
 }
 
-static void progress(const char * filename, int tab, int progress){
-    cerr << '\r' << flush;
-    for (int tn=0; tn < (2*tab); tn++){
-        cerr << '\t' << flush;
-    }
-    cerr << '#' << filename << ':' << progress << '\%' << flush;
+static inline void progress(int prog){
+    cerr << "\r\t\t" << prog << '\%' << flush;
 }
 
 

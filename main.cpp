@@ -1,10 +1,10 @@
-#define VERS "v1.3"
+#define VERS "v2.1"
 
 #define G_ARG "--geneid="
-#define T_ARG "--typid="
+//#define T_ARG "--typid="
 
 #define garg_id "AL"
-#define targ_id "TYP"
+//#define targ_id "TYP"
 
 #include "appender.h"
 
@@ -23,7 +23,7 @@ void usage(){
 
     cerr << "\nFLAGS:" << endl;
     cerr << G_ARG << garg_id << "            specifies common genelist identifier in VCF file(s)" << endl;
-    cerr << T_ARG << targ_id << "            specifies common type (SNP/Indel) identifier in VCF file(s)" << endl;
+//    cerr << T_ARG << targ_id << "            specifies common type (SNP/Indel) identifier in VCF file(s)" << endl;
 
     cerr << "\nOUTPUTS:" << endl;
     cerr << "annotated_folder       each of the annotated VCF files will be placed here" << endl;
@@ -35,7 +35,7 @@ void usage(){
 
 int main(int argc, char *argv[])
 {    
-    if (argc<9) usage();
+    if (argc<8) usage();
 
     QStringList vcf_files = QString(argv[1]).split('+');
     QString gmp_file = argv[2];
@@ -43,16 +43,15 @@ int main(int argc, char *argv[])
     QString fas_folder = argv[4];
 
     QString opt_G = QString(argv[5]).split('=')[0].trimmed()+'=';
-    QString opt_T = QString(argv[6]).split('=')[0].trimmed()+'=';
+//    QString opt_T = QString(argv[6]).split('=')[0].trimmed()+'=';
 
     if (opt_G!=G_ARG){cerr << "should be '" << G_ARG << "' here" << endl; exit(-1);}
-    if (opt_T!=T_ARG){cerr << "should be '" << T_ARG << "' here" << endl; exit(-1);}
 
     QString G_id = QString(argv[5]).split(G_ARG)[1].trimmed();
-    QString T_id = QString(argv[6]).split(T_ARG)[1].trimmed();
 
-    QString output_fold=argv[7];
-    QString rejects_fold=argv[8];
+
+    QString output_fold=argv[6];
+    QString rejects_fold=argv[7];
 
     //Attempt to make folders -- clearly works only on unix
     QString command = "mkdir -p "+output_fold+"; mkdir -p "+rejects_fold;
@@ -62,7 +61,7 @@ int main(int argc, char *argv[])
     ProteinHandler ph(dna_file);
 
     for (int f=0; f< vcf_files.length(); f++){
-        Appender(vcf_files[f], fas_folder, G_id, T_id, output_fold, rejects_fold, (f+1), gm, ph);
+        Appender(vcf_files[f], fas_folder, G_id, output_fold, rejects_fold, (f+1), gm, ph);
     }
     cerr << endl;
 }

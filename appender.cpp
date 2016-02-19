@@ -15,6 +15,7 @@
     continue;\
 }
 
+
 // Ref_index is in relation to direction. 0 - first part of codon, 1 - second part of codon, 2 - third part of codon in both cases
 // reverse positions require a +1 offset it seems (ref_index, getRefCodon) ... not sure why.
 
@@ -417,14 +418,21 @@ void Appender::handleHeaders(QString &line, QTextStream &in, uint &countline)
             QStringList tokes = line.split('\t');
             bool form = false;
             for (int p=0; p < tokes.length(); p++){
-                if (tokes[p].toUpper().contains("FORMAT")) {
+                QString upper_header = tokes[p].toUpper();
+
+                if (upper_header.contains("FORMAT")) {
                     FORMAT_INDEX = p;
                     INDIV_START_INDEX = p+1;
                     form = true;
-                    break; // break forloop
+                }
+                else if (upper_header.contains("INFO")) {
+                    INFO_INDEX = p;
                 }
             }
-            if (!form) {cerr << "\n\nCould not find FORMAT column! " << endl; exit(-1);}
+            if (!form) {
+                cerr << "\n\nCould not find FORMAT column! " << endl;
+                exit(-1);
+            }
             else {
                 quit_now = true;
             }
@@ -450,3 +458,12 @@ void Appender::handleHeaders(QString &line, QTextStream &in, uint &countline)
     //Go to end of headers
     in.seek(bufferpos);
 }
+
+
+
+bool Appender::isaSNV(QString &info_text){
+    return !info_text.contains("IndelType=");
+}
+
+
+

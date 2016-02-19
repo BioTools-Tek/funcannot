@@ -73,7 +73,7 @@ private:
 
 public:
     //indexes
-    int FORMAT_INDEX, INDIV_START_INDEX;  // updated by handleHeaders()
+    int INFO_INDEX, FORMAT_INDEX, INDIV_START_INDEX;  // updated by handleHeaders()
     int GENES_INDEX, TYP_INDEX; // updated every chromosome (should be the same though)
 
     //Static shared over all instances:/// HHHOWW?
@@ -89,6 +89,8 @@ public:
     int tab_count;
 
     void handleHeaders(QString &line, QTextStream &in, uint &countline);
+
+    bool isaSNV( QString &info_text);
 
 
     QString getRefCodon(bool &forward, int &ref_index, quint64 &bpos);
@@ -112,16 +114,20 @@ public:
         delete fh;
     }
 
-    Appender(QString &vcf_file, QString &FASTA_folder, QString &G_id, QString &T_id,
+    Appender(QString &vcf_file, QString &FASTA_folder, QString &G_id,
              QString &outfold, QString &rejfold,
              int tabcount,
              GeneMap &map, ProteinHandler &prh)
     {
-        QString prefix = ((vcf_file.contains('/'))?vcf_file.split('/').last():vcf_file).split('_')[0];
+        QString prefix = ((vcf_file.contains('/'))?vcf_file.split('/').last():vcf_file);
+        prefix = (prefix.endsWith(".vcf")?prefix.split(".vcf")[0]:prefix);
+
         const char * prefs = prefix.toUtf8().data();
 
-        (outputs = new QFile(outfold+'/'+prefix+"_funcannots.vcf"))->open(QIODevice::WriteOnly);
-        (rejects = new QFile(rejfold+'/'+prefix+"_rejects"))->open(QIODevice::WriteOnly);
+        cerr << prefs << ":  " << flush;
+
+        (outputs = new QFile(outfold+'/'+prefix+".func.vcf"))->open(QIODevice::WriteOnly);
+        (rejects = new QFile(rejfold+'/'+prefix+".func.rejects"))->open(QIODevice::WriteOnly);
 
         //non-s
         fh = new FASTAHandler(FASTA_folder);
@@ -154,7 +160,7 @@ public:
                 //FILE number (i.e. first, second, third ,etc) corresponds to num tabs -- do a macro for this
                 // also rejects should appear in same line possibly with [sympton] -- DONE
 
-                if(++countline%12==0) progress(prefs, tabcount, 100*countline/numlines);
+                if(++countline%12==0) progress(100*countline/numlines);
 
                 QString line = in.readLine();
                 if (line.trimmed().length()<1) continue;
@@ -174,16 +180,16 @@ public:
                     fh->openFASTA(chr);
                     current_chr = chr;
 
-                    GENES_INDEX = FORMAT.indexOf(G_id);
-                    TYP_INDEX = FORMAT.indexOf(T_id);
+                   GENES_INDEX = FORMAT.indexOf(G_id);
                 }
 
-//                cerr << "T_ID == " << T_id.toUtf8().data() << endl;
-//                cerr << "T_INDEX == " << TYP_INDEX << endl;
+                if (GENES_INDEX == -1){
+                    cerr << "\n[Error] Could not find " << G_id.toUtf8().data();
+                    cerr << " for line " << (countline+1);
+                    cerr << " in file: " << vcf_file.toUtf8().data() << endl;
 
-                if ((GENES_INDEX == -1) || ( TYP_INDEX == -1)){
-                    cerr << "\n[Error] Could not find " << G_id.toUtf8().data() << " or " << T_id.toUtf8().data() << flush;
-                    cerr << " for line " << (countline+1) << endl;
+                    cerr << "GI=" << GENES_INDEX << endl;
+
                     exit(-1);
                 }
                 //Add id's to FORMAT
@@ -205,8 +211,8 @@ public:
                 QString VALT = tokes[4].trimmed();
                 QString FREF = fh->getReference(pos);
 
-                QStringList genelist = IFORMAT[GENES_INDEX].split(',');
-                bool isSNV = IFORMAT[TYP_INDEX].trimmed()=="SNV";
+                bool isSNV = isaSNV(tokes[INFO_INDEX]);
+                bool isDel = (!isSNV && VALT.length()==1);
 
 //                if (!isSNV){
 //                    cerr << "\nNot a SNV:\n" << chr.toUtf8().data() << "  " << pos << endl;
@@ -214,11 +220,9 @@ public:
 //                    exit(-1);
 //                }
 
-                bool isDel = (!isSNV && VALT.length()==1);
 
 
                 QString rejects_per_line=" "; //collects bad genes/introns/references etc
-
                 if (VREF[0]!=FREF[0]){
                     rejects_per_line.append("[VCF_REF="+VREF
                                             +" FASTA_REF="+FREF
@@ -226,17 +230,20 @@ public:
                 }
                 //directions, codons, proteins, mutations
 
-//                cerr << "gettinglists" << endl;
+//                cerr << "gettinglists:- " << countline << flush;
+//                cerr << line.toUtf8().data() << flush;
+//                cerr << "isSNV, isDel: " << isSNV << "," << isDel << flush;
 
+                QStringList genelist = IFORMAT[GENES_INDEX].split(',');
 //                cerr << chr.toUtf8().data() << " " << pos << " [" << flush;
 //                for (int i=0; i< genelist.length(); i++) cerr << " " << genelist[i].toUtf8().data() << flush;
 //                cerr << "] " << VALT.toUtf8().data() << "=" << VREF.toUtf8().data() << " (" << VREF.length() << "," << VALT.length() << ")" << isSNV << " " << isDel << " " << rejects_per_line.toUtf8().data() << endl;
 
                 QStringList d_c_p_m_ch_ph = getLists(chr, pos, genelist, VALT, VREF, VREF.length(), VALT.length(), isSNV, isDel, rejects_per_line);
 
-//                cerr << "gotlists" << endl;
-
+//                cerr << " --> gotlists" << endl;
 //                cerr << '\n' << line.toUtf8().data() << endl;
+
                 //Add lists to IFORMAT
                 IFORMAT.insert(GENES_INDEX+1,d_c_p_m_ch_ph[5]);
                 IFORMAT.insert(GENES_INDEX+1,d_c_p_m_ch_ph[4]);
@@ -262,7 +269,8 @@ public:
 
                 fileout("\n",false);
             }
-            progress(prefs, tabcount, 100);
+            progress(100);
+            cerr << endl;
         }
     }
 };
