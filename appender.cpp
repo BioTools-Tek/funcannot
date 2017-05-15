@@ -463,7 +463,6 @@ void Appender::handleHeaders(QString &line, QTextStream &in, uint &countline)
         printNewHeads;  //Never found header, print new one
     }
 
-
     //Go to end of headers
     in.seek(bufferpos);
 }

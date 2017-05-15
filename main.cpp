@@ -1,5 +1,4 @@
 #define VERS "v2.2-20170514.3"
-
 #define G_ARG "--geneid="
 //#define T_ARG "--typid="
 
@@ -61,7 +60,6 @@ int main(int argc, char *argv[])
     ProteinHandler ph(dna_file);
 
     for (int f=0; f< vcf_files.length(); f++){
-        cerr << "Processing" <<
         Appender(vcf_files[f], fas_folder, G_id, output_fold, rejects_fold, (f+1), gm, ph);
     }
     cerr << endl;
