@@ -450,11 +450,20 @@ void Appender::handleHeaders(QString &line, QTextStream &in, uint &countline)
     }
     while(!quit_now && !in.atEnd());
 
+    // All headers already present? Already processed, skip.
+    if (found_header_chlist && found_header_clist && found_header_dlist
+            && found_header_mlist && found_header_phlist && found_header_plist){
+        cerr << "Already processed, skipping." << endl;
+        exit(0);
+    }
+
     //Never found ##FORMAT in header
     if(found_format==-1){
         cerr << "No Format line in header!\nPrinting new one anyway..." << endl;
         printNewHeads;  //Never found header, print new one
     }
+
+
     //Go to end of headers
     in.seek(bufferpos);
 }

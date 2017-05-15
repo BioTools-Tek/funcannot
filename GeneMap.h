@@ -102,6 +102,12 @@ private:
                 if (name_exon_splice.length()>1)
                 {
                     QStringList exon_splice =  name_exon_splice[1].split('_');
+
+                    // Skip non-coding
+                    if (!exon_splice[0].startsWith("Exon")){
+                        continue;
+                    }
+
                     Exon_number = exon_splice[0].split("Exon")[1].toInt();
 
                     if (exon_splice.length()>1)
