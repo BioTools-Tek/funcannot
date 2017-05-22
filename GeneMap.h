@@ -94,57 +94,61 @@ private:
                 Gene_Map[chr][name] = g;
 
 
-                // Determine the length of the coding sequence for this gene
-                bool splice=false, exon=false;
-                int Exon_number=-1;
+                QStringList gene_bar_detail = name.split('|');
+                // [Name]                  '|'   '_'
+                // Gene                   - 1  -  0
+                // Gene|Exon1             - 2  -  0  * only scenario we have to work on
+                // Gene|Exon1_SpliceA     - 2  -  2
+                // Gene|Exon1_5'UTR       - 2  -  2
+                // Gene|Intron1           - 2  -  0
+                // Gene|Promoter          - 2  -  0
+                // Gene1-Gene2|Intergenic - 2  -  0
 
-                QStringList name_exon_splice = name.split('|');
-                if (name_exon_splice.length()>1)
+                // However, this is FUNCTIONAL annotation -- meaning we only care about coding.
+
+                if (gene_bar_detail.length()>1)
                 {
-                    QStringList exon_splice =  name_exon_splice[1].split('_');
+                    QString gene_part   = gene_bar_detail[0]; // Gene
+                    QString detail_part = gene_bar_detail[1]; // Exon1_5'UTR
 
-                    // Skip non-coding
-                    if (!exon_splice[0].startsWith("Exon")){
+                    /*
+                    // Intergenic
+                    if (detail_part.startsWith("Intergenic")){
+                        //mapIntergenic();
                         continue;
                     }
 
-                    Exon_number = exon_splice[0].split("Exon")[1].toInt();
+                    // Promoter
+                    if (detail_part.startsWith("Promoter")){
+                        //mapPromoter();
+                        continue;
+                    }
 
-                    if (exon_splice.length()>1)
-                    {
-                        if (exon_splice[0].trimmed().startsWith("Exon")) exon=true;
+                    // Intron
+                    if (detail_part.startsWith("Intron")){
+                        continue;
+                    }*/
 
-                        for(int si=1; si< exon_splice.size(); si++){
-                            if (exon_splice[si].trimmed().startsWith("Splice")) {
-                                splice=true; break;
+                    if (detail_part.startsWith("Exon")){
+
+                        // Pure coding region -- not splice, not UTR, boom we're in business.
+                        if (!detail_part.contains('_')){
+                            int exon_number = detail_part.split("Exon")[1].toInt();
+
+                            // Update GeneCDS positions
+                            QString nameref = gene_part.trimmed();
+
+                            if (Gene_Stats[chr].contains(nameref)){
+                                Gene_Stats[chr][nameref]->insertExon(exon_number, pos1, pos2);
+                            } else {
+                                (Gene_Stats[chr][nameref] = new GeneStats(nameref))->insertExon(exon_number, pos1, pos2);
                             }
                         }
-                    }
-                    else exon=true;
-                } else exon = true; // single gene name
-
-//                cerr << "gene=" << name.toUtf8().data() << ", exon=" << exon << ", splice=" << splice << endl;
-
-
-                if (exon && !splice){
-                    // Update GeneCDS positions
-                    QString nameref = name_exon_splice[0].trimmed();
-
-                    if (Gene_Stats[chr].contains(nameref)){
-                        Gene_Stats[chr][nameref]->insertExon(Exon_number, pos1, pos2);
-                    } else {
-                        (Gene_Stats[chr][nameref] = new GeneStats(nameref))->insertExon(Exon_number, pos1, pos2);
                     }
                 }
                 if (++cnt%15321==0) progress(100*cnt/numlines);
             }
 
-            //THAR BE SPACE BUGS HERE YAR!
-//            GeneStats *ree = Gene_Stats["chr1"]["HRNR"];
-//            cerr << '\n' << ree->gene.toUtf8().data() << ", "
-//                 << ree->exon_positions[2][0] << "-" << ree->exon_positions[2][1]
-//                 << "==" << ree->exon_positions[2][2] << endl;
-//            exit(-1);
             progress(100);
             cerr << endl;
 

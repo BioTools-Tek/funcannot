@@ -1,4 +1,4 @@
-#define VERS "v2.2-20170514.3"
+#define VERS "v2.5-20170522"
 #define G_ARG "--geneid="
 //#define T_ARG "--typid="
 
@@ -36,6 +36,7 @@ int main(int argc, char *argv[])
 {    
     if (argc<8) usage();
 
+
     QStringList vcf_files = QString(argv[1]).split('+');
     QString gmp_file = argv[2];
     QString dna_file = argv[3];
@@ -44,10 +45,10 @@ int main(int argc, char *argv[])
     QString opt_G = QString(argv[5]).split('=')[0].trimmed()+'=';
 //    QString opt_T = QString(argv[6]).split('=')[0].trimmed()+'=';
 
+
     if (opt_G!=G_ARG){cerr << "should be '" << G_ARG << "' here" << endl; exit(-1);}
 
     QString G_id = QString(argv[5]).split(G_ARG)[1].trimmed();
-
 
     QString output_fold=argv[6];
     QString rejects_fold=argv[7];
@@ -58,6 +59,7 @@ int main(int argc, char *argv[])
 
     GeneMap gm(gmp_file);
     ProteinHandler ph(dna_file);
+
 
     for (int f=0; f< vcf_files.length(); f++){
         Appender(vcf_files[f], fas_folder, G_id, output_fold, rejects_fold, (f+1), gm, ph);

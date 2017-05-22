@@ -167,32 +167,31 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
     for (int g=0; g < genelist.length(); g++){
         QString gene = genelist[g].trimmed();
         QString just_gene= gene;
-        t_exon Exon_number=-1;
+        t_exon exon_number=-1;
 
         //Intron check
         if (gene.contains('|')){
 
             QStringList gene_extra = gene.split('|');
-            just_gene = gene_extra[0];
 
-            if (gene_extra[1].startsWith("Intron")){
-                rejects_per_line.append(BSta +gene+ BEnd+',');
+            just_gene = gene_extra[0];
+            QString detail = gene_extra[1];
+
+            // Skip non-exons
+            if (!detail.startsWith("Exon")){
+                rejects_per_line.append(BSta + gene + BEnd + ',');
                 skipbad;
             }
-            else if (gene_extra[1].startsWith("Exon")){
-//                cerr << "\ngot here" << endl;
 
-                QString num_extra = gene_extra[1].split("Exon")[1];
-                if(num_extra.contains("_")){
-                    // Skip UTR and Splice, only dealing with coding variants;
-//                    cerr << num_extra[1].trimmed().right(3).toUtf8().data() << endl;
-//                    if (num_extra[1].trimmed().right(3)=="UTR"){skipbad;}
-                    skipbad;
-                }
 
-                Exon_number = num_extra.toInt();
-                //cerr << "EXON_NUMBER=" << Exon_number << endl;
+            // Exons -- coding!
+            QString num_extra = detail.split("Exon")[1];
+            if(num_extra.contains("_")){
+                // Skip UTR and Splice, only dealing with coding variants;
+                skipbad;
             }
+
+            exon_number = num_extra.toInt();
         }
 
         if ( (!genemap.contains(chr)) || (!genemap[chr].contains(gene)) ){
@@ -241,7 +240,7 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
 //        cerr << "Exon_number:" << Exon_number << endl;
 
         QStringList cnom_pnom_proteins = antonorakis(
-                      gs->exon_positions.value(Exon_number),
+                      gs->exon_positions.value(exon_number),
                       gc->forward,
                       bpos,
                       VREF, VALT,
