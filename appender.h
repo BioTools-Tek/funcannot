@@ -106,7 +106,7 @@ public:
 
     QString antonorakis(ExonData *data, bool &direction, quint64 &bpos, QString &VREF, QString &VALT,
                                   QString &ref_codon, QString &alt_codon,
-                                  bool &isSNV, bool &isDel , quint64 &next_codon_bpos);
+                                  bool &isSNV, bool &isDel , quint64 &next_codon_bpos, bool printProtein);
 
     ~Appender(){
         outputs->close();

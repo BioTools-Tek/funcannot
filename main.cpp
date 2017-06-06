@@ -1,4 +1,4 @@
-#define VERS "v2.5-20170522"
+#define VERS "v2.7-20170606"
 #define G_ARG "--geneid="
 //#define T_ARG "--typid="
 

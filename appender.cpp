@@ -178,20 +178,24 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
             QString detail = gene_extra[1];
 
             // Skip non-exons
-            if (!detail.startsWith("Exon")){
-                rejects_per_line.append(BSta + gene + BEnd + ',');
-                skipbad;
+            if (detail.startsWith("Exon")){
+                // Exons -- coding!
+                QString num_extra = detail.split("Exon")[1];
+                if(num_extra.contains("_")){
+                    // Skip UTR and Splice, only dealing with coding variants;
+                    skipbad;
+                }
+                exon_number = num_extra.toInt();
             }
-
-
-            // Exons -- coding!
-            QString num_extra = detail.split("Exon")[1];
-            if(num_extra.contains("_")){
-                // Skip UTR and Splice, only dealing with coding variants;
-                skipbad;
+            else {
+                if (detail.startsWith("Promoter")){
+                    exon_number = -101;
+                }
+                else {
+                    rejects_per_line.append(BSta + gene + BEnd + ',');
+                    skipbad;
+                }
             }
-
-            exon_number = num_extra.toInt();
         }
 
         if ( (!genemap.contains(chr)) || (!genemap[chr].contains(gene)) ){
@@ -200,7 +204,15 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         }
 
         GeneContainer *gc = genemap[chr][gene];
-        GeneStats *gs = genestats[chr][just_gene];
+        GeneStats *gs = 0;
+
+        if (genestats[chr].contains(just_gene)){
+            gs = genestats[chr][just_gene];
+        }
+        else {
+            //e.g. chr1 LOC100288069 -- complete UTR gene, promoter is therefore missed
+            continue;
+        }
 
 
         // If we assume that exonFrames refers to previous exon in terms of position, and not direction:
@@ -229,42 +241,89 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         }
         else directionlist.append("+,");
 
-
-//        cerr << "YES6" << endl;
-
         //This method counts from the start of the current exon
 //        QStringList cnom_pnom_proteins = antonorakis(gs->exon_positions[Exon_number], gc->forward, bpos, VREF, VALT, ref_codon, alt_codon, isSNV, isDel, next_ref_codon_index ).split("||");
 
         //New method counts from start of coding sequence (first/last exon)
 
-//        cerr << "Exon_number:" << Exon_number << endl;
+        ExonData * ex;
+        quint64 position;
+        bool printProtein = true;
+
+        // Promoter? Find end exon and feed it in
+        if (exon_number == -101){
+            QList<t_exon> exon_keys = gs->exon_positions.keys();
+            t_exon smallest = 9999999999999999999, largest = 0;
+            t_exon smallest_value = 9999999999999999, largest_value = 0;
+
+            for (int ek=0; ek < exon_keys.length(); ek ++){
+                t_exon tmp = exon_keys.at(ek);
+
+                t_exon start = gs->exon_positions.value(tmp)->start,
+                       finit = gs->exon_positions.value(tmp)->end;
+
+                t_exon small = (start < finit)?start:finit;
+                t_exon large = (start > finit)?start:finit;
+
+
+                if (small < smallest_value){
+                    smallest = tmp;
+                    smallest_value = small;
+                }
+
+                if (large > largest_value){
+                    largest = tmp;
+                    largest_value = large;
+                }
+            }
+
+            ex = gs->exon_positions.value(gc->forward?smallest:largest);
+
+            position = bpos;
+            if (gc->forward){
+                position -= 1;
+            }
+            printProtein = false;
+        }
+        else {
+            // Regular Exon?
+            ex = gs->exon_positions.value(exon_number);
+            position = bpos;
+            printProtein = true;
+        }
 
         QStringList cnom_pnom_proteins = antonorakis(
-                      gs->exon_positions.value(exon_number),
-                      gc->forward,
-                      bpos,
-                      VREF, VALT,
-                      ref_codon, alt_codon,
-                      isSNV, isDel,
-                      next_ref_codon_index ).split("||");
+                    ex,
+                    gc->forward,
+                    position,
+                    VREF, VALT,
+                    ref_codon, alt_codon,
+                    isSNV, isDel,
+                    next_ref_codon_index, printProtein ).split("||");
 
 
-//        cerr << "YES7" << endl;
+        if (printProtein){
+            codon_change_list.append(cnom_pnom_proteins[0]+',');
+            codonlist.append(BSta+ref_codon+' '+alt_codon+BEnd+',');
 
-        codon_change_list.append(cnom_pnom_proteins[0]+',');
-        codonlist.append(BSta+ref_codon+' '+alt_codon+BEnd+',');
+            QStringList proteins = cnom_pnom_proteins[2].split(' ');
+            QString &ref_protein = proteins[0], &alt_protein = proteins[1];
 
-  //      cerr << "YES8" << endl;
+            protein_change_list.append(cnom_pnom_proteins[1]+',');
+            proteinlist.append(BSta+cnom_pnom_proteins[2]+BEnd+',');
 
-        QStringList proteins = cnom_pnom_proteins[2].split(' ');
-        QString &ref_protein = proteins[0], &alt_protein = proteins[1];
+            //Check Mutation
+            QString mutation(ph->proteins2mutation(ref_protein, alt_protein));
+            mutationlist.append(mutation+',');
+        }
+        else {
+            codon_change_list.append(cnom_pnom_proteins[0]+',');
+            codonlist.append("*,");
 
-        protein_change_list.append(cnom_pnom_proteins[1]+',');
-        proteinlist.append(BSta+cnom_pnom_proteins[2]+BEnd+',');
-
-        //Check Mutation
-        QString mutation(ph->proteins2mutation(ref_protein, alt_protein));
-        mutationlist.append(mutation+',');
+            protein_change_list.append("*,");
+            proteinlist.append("*,");
+            mutationlist.append("*,");
+        }
     }
 
     QStringList res;
@@ -325,12 +384,13 @@ QString Appender::p_nomenclature(quint64 &bpos, int &position, QString &ref_prot
 
 }
 
+
 QString Appender::antonorakis(
        ExonData *current_exon, bool &direction, quint64 &bpos,
                               QString &VREF, QString &VALT,
                               QString &ref_codon, QString &alt_codon,
                               bool &isSNV, bool &isDel,
-                              quint64 &next_codon_bpos)
+                              quint64 &next_codon_bpos, bool printProtein = true)
 {
     //Exon data:
     // [#Exon] -->
@@ -357,13 +417,13 @@ QString Appender::antonorakis(
     else {
         t_exon rollover = current_exon->five_to_three-(current_exon->end - current_exon->start);   // #coding up to beginning of current exon
         coding_pos = (bpos - current_exon->start) + rollover;   //coding from start to current
-
-//        cerr << "rollover=" << rollover << ", coding_pos=" << coding_pos << endl;
     }
-//    cerr << "HEREAGAIN" << endl;
+
+    if (!printProtein){
+        return c_nomenclature(coding_pos, VREF, VALT, isSNV, isDel)+"||"+"*"+"||* *";
+    }
+
     int protein_position = ((coding_pos-1)/3) + 1; // same for both directions (start point changes that's all, calculation same)
-
-
 
     //Check proteins
     QStringList proteinRA = ph->codons2Proteins(ref_codon, alt_codon).split(',');
