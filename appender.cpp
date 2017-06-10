@@ -169,6 +169,9 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         QString just_gene= gene;
         t_exon exon_number=-1;
 
+        int regulatory_val = Exon;  // Exon
+        int regulatory_type = None; // Coding
+
         //Intron check
         if (gene.contains('|')){
 
@@ -182,14 +185,24 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
                 // Exons -- coding!
                 QString num_extra = detail.split("Exon")[1];
                 if(num_extra.contains("_")){
-                    // Skip UTR and Splice, only dealing with coding variants;
-                    skipbad;
+                    // Splice
+                    QStringList deets = num_extra.split("_");
+
+                    // Donor gives, Acceptor recieves
+                    bool upstream = deets[1].split("Splice")[1] == "D";
+                    num_extra = deets[0];
+
+                    regulatory_val  = Splice_UTR;
+                    regulatory_type = upstream?Upstream:Downstream;
                 }
                 exon_number = num_extra.toInt();
             }
             else {
                 if (detail.startsWith("Promoter")){
-                    exon_number = -101;
+                    bool upstream = detail.endsWith("upstream");
+
+                    regulatory_val  = Promoter;
+                    regulatory_type = upstream?Upstream:Downstream;
                 }
                 else {
                     rejects_per_line.append(BSta + gene + BEnd + ',');
@@ -237,6 +250,8 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         if (!gc->forward){
             directionlist.append("-,");
             ref_codon = ph->reverseComplement(ref_codon);  // -- This is needed here (can be reversed only AFTER getAltCodon has used it)
+            VREF = ph->reverseComplement(VREF);
+            VALT = ph->reverseComplement(VALT);
 //            alt_codon = ph->reverseComplement(alt_codon);  // -- This is now performed in getAltCodon
         }
         else directionlist.append("+,");
@@ -247,11 +262,9 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
         //New method counts from start of coding sequence (first/last exon)
 
         ExonData * ex;
-        quint64 position;
-        bool printProtein = true;
 
-        // Promoter? Find end exon and feed it in
-        if (exon_number == -101){
+        if (regulatory_val == Promoter)
+        {
             QList<t_exon> exon_keys = gs->exon_positions.keys();
             t_exon smallest = 9999999999999999999, largest = 0;
             t_exon smallest_value = 9999999999999999, largest_value = 0;
@@ -278,31 +291,28 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
             }
 
             ex = gs->exon_positions.value(gc->forward?smallest:largest);
-
-            position = bpos;
-            if (gc->forward){
-                position -= 1;
-            }
-            printProtein = false;
         }
+
+        /*else if (regulatory_val == Splice_UTR){
+            ex = gs->exon_positions.value(exon_number);
+        }*/
+
         else {
             // Regular Exon?
             ex = gs->exon_positions.value(exon_number);
-            position = bpos;
-            printProtein = true;
         }
 
         QStringList cnom_pnom_proteins = antonorakis(
                     ex,
                     gc->forward,
-                    position,
+                    bpos,
                     VREF, VALT,
                     ref_codon, alt_codon,
                     isSNV, isDel,
-                    next_ref_codon_index, printProtein ).split("||");
+                    next_ref_codon_index, regulatory_type).split("||");
 
 
-        if (printProtein){
+        if (regulatory_val == Exon){
             codon_change_list.append(cnom_pnom_proteins[0]+',');
             codonlist.append(BSta+ref_codon+' '+alt_codon+BEnd+',');
 
@@ -328,34 +338,55 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
 
     QStringList res;
      // remove last comma
-    codonlist.chop(1); proteinlist.chop(1); mutationlist.chop(1); directionlist.chop(1);
-    codon_change_list.chop(1); protein_change_list.chop(1);
+    codonlist.chop(1); proteinlist.chop(1); mutationlist.chop(1);
+    directionlist.chop(1);codon_change_list.chop(1); protein_change_list.chop(1);
+
     res.append(directionlist); res.append(codonlist); res.append(proteinlist); res.append(mutationlist);
-    res.append(codon_change_list); res.append(protein_change_list);
+    res.append(codon_change_list);res.append(protein_change_list);
     return res;
 }
 
+QString Appender::c_nomenclature_regulatory(int &coding_pos, int &offset,
+                                            QString &ref, QString &alt,
+                                            bool &isSNV, bool &isDel)
+{
+    QString position = ((offset > 0)?"+":"")+QString::number(offset); // '-' in number
 
-QString Appender::c_nomenclature(int &position, QString &ref, QString &alt,
-                              bool &isSNV, bool &isDel) {
-    if (isSNV) return "c."+QString::number(position)+ref[0].toLatin1()+'>'+alt[0].toLatin1();
-    if (isDel) return "c."+QString::number(position)+'_'+QString::number(position+ref.length())+"del"+ref;
+    if (coding_pos != 0){
+        position.prepend(QString::number(coding_pos));
+    }
+
+    if (isSNV) return "c."+position+ref[0].toLatin1()+'>'+alt[0].toLatin1();
+    if (isDel) return "c."+position+'_'+QString::number(coding_pos+ref.length())+"del"+ref;
 
     //insertion
-    return "c."+QString::number(position)+'_'+QString::number(position+1)+"ins"+alt;
+    return "c."+position+'_'+QString::number(coding_pos+1)+"ins"+alt;
+}
+
+
+QString Appender::c_nomenclature(int &pos, QString &ref, QString &alt,
+                              bool &isSNV, bool &isDel) {
+
+    QString position = QString::number(pos);
+
+    if (isSNV) return "c."+position+ref[0].toLatin1()+'>'+alt[0].toLatin1();
+    if (isDel) return "c."+position+'_'+QString::number(pos+ref.length())+"del"+ref;
+
+    //insertion
+    return "c."+position+'_'+QString::number(pos+1)+"ins"+alt;
 }
 
 
 QString Appender::p_nomenclature(quint64 &bpos, int &position, QString &ref_protein, QString &alt_protein,
                               int vrlen, int valen,
                               bool &isSNV, bool &isDel,
-                              quint64 &next_codon_bpos) {
+                              quint64 &next_codon_bpos){
 
-    QString ref_p = ph->getProteinSymbol(ref_protein), alt_p = ph->getProteinSymbol(alt_protein);
-
+    QString ref_p = ph->getProteinSymbol(ref_protein),
+            alt_p = ph->getProteinSymbol(alt_protein);
 
     if (isSNV) return "p."+ref_p+QString::number(position)+alt_p;
-    if (isDel) {
+    if (isDel){
         int num_proteins_del = ((vrlen-1)/3)+1;
         if (num_proteins_del == 1) return "p."+ref_p+QString::number(position)+"del";
         return "p."+ref_p+QString::number(position)+'_'+alt_p+QString::number(position+num_proteins_del)+"del";
@@ -378,7 +409,7 @@ QString Appender::p_nomenclature(quint64 &bpos, int &position, QString &ref_prot
     //quint64 leftover = bpos+valen - next_three;
 //    cerr << "Leftover for insertion:" << leftover << endl;
 
-    return   "p."+ref_p+QString::number(position)+'_'\
+    return "p."+ref_p+QString::number(position)+'_'\
             +QString::number(position+num_proteins_ins)+"ins"\
             +intermediate_proteins;
 
@@ -390,7 +421,7 @@ QString Appender::antonorakis(
                               QString &VREF, QString &VALT,
                               QString &ref_codon, QString &alt_codon,
                               bool &isSNV, bool &isDel,
-                              quint64 &next_codon_bpos, bool printProtein = true)
+                              quint64 &next_codon_bpos, int regulatory)
 {
     //Exon data:
     // [#Exon] -->
@@ -408,20 +439,38 @@ QString Appender::antonorakis(
 //    cerr << "Exon 5'3:" << current_exon->five_to_three << endl;
 //    cerr << "Exon 3'5:" << current_exon->three_to_five << endl;
 
+    if (regulatory != None){
+        int exon_pos = direction?current_exon->five_to_three:current_exon->three_to_five;
+
+        int offset = -1;
+        if (regulatory == Upstream){
+            exon_pos -= current_exon->end - current_exon->start; // jump to start
+            offset = direction?(bpos - current_exon->start):(current_exon->end - bpos);
+        }
+        else if (regulatory == Downstream){
+            // We are at the end of exon
+            offset = direction?(bpos + 1 - current_exon->end):(current_exon->start - bpos + 1);
+        }
+
+        if (direction){
+            offset -= 1;
+        }
+
+        return c_nomenclature_regulatory(exon_pos, offset, VREF, VALT, isSNV, isDel)+"|| * ||* *";
+    }
+
+
     int coding_pos = -1; //coding position
 
     if(!direction){ // reverse
-        t_exon rollover = current_exon->three_to_five - (current_exon->end-current_exon->start); // #coding up to end of current exon (measuring from 3->5)
+        t_exon rollover = current_exon->three_to_five - (current_exon->end - current_exon->start); // #coding up to end of current exon (measuring from 3->5)
         coding_pos = (current_exon->end-bpos) + rollover + 1;  // coding from end to current
     }
     else {
-        t_exon rollover = current_exon->five_to_three-(current_exon->end - current_exon->start);   // #coding up to beginning of current exon
+        t_exon rollover = current_exon->five_to_three - (current_exon->end - current_exon->start);   // #coding up to beginning of current exon
         coding_pos = (bpos - current_exon->start) + rollover;   //coding from start to current
     }
 
-    if (!printProtein){
-        return c_nomenclature(coding_pos, VREF, VALT, isSNV, isDel)+"||"+"*"+"||* *";
-    }
 
     int protein_position = ((coding_pos-1)/3) + 1; // same for both directions (start point changes that's all, calculation same)
 

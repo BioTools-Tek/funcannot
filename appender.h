@@ -76,6 +76,9 @@ public:
     int INFO_INDEX, FORMAT_INDEX, INDIV_START_INDEX;  // updated by handleHeaders()
     int GENES_INDEX, TYP_INDEX; // updated every chromosome (should be the same though)
 
+    enum Regulatory { Promoter, Splice_UTR, Exon };
+    enum RegulatoryType { Upstream, Downstream, None };
+
     //Static shared over all instances:/// HHHOWW?
     QMap<QString,QMap<QString,GeneContainer*> > genemap;        //generate once
     QMap<QString,QMap<QString,GeneStats*> > genestats;        //generate once
@@ -98,7 +101,9 @@ public:
                                   QString &ref_codon, QString &VALT,
                                   int &vrlen, int &valen, quint64 &bpos);
 
-    QString c_nomenclature(int &position, QString &ref, QString &alt, bool &isSNV, bool &isDel);
+    QString c_nomenclature(int &pos, QString &ref, QString &alt, bool &isSNV, bool &isDel);
+    QString c_nomenclature_regulatory(int &coding_pos, int &offset, QString &ref, QString &alt,bool &isSNV, bool &isDel);
+
     QString p_nomenclature(quint64 &bpos, int &position, QString &ref_p, QString &alt_protein, int vrlen, int valen, bool &isSNV, bool &isDel, quint64 &next_codon_bpos);
 
     QStringList getLists(QString &chr, quint64 &bpos, QStringList &genelist,
@@ -106,7 +111,7 @@ public:
 
     QString antonorakis(ExonData *data, bool &direction, quint64 &bpos, QString &VREF, QString &VALT,
                                   QString &ref_codon, QString &alt_codon,
-                                  bool &isSNV, bool &isDel , quint64 &next_codon_bpos, bool printProtein);
+                                  bool &isSNV, bool &isDel , quint64 &next_codon_bpos, int regulatory);
 
     ~Appender(){
         outputs->close();

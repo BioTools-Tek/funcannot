@@ -25,7 +25,6 @@ Str/S   GER,GRE,VER
 class ProteinHandler{
 
     QMap<QString, QString> symbol_map;  //[ALA] -> A  keep it as QString for simplicity with other functions
-    QMap<QChar,QChar> rcMap; //reverse complement map;
 
     void populateRCMap(){
         rcMap['A'] = 'T';rcMap['T'] = 'A';rcMap['a'] = 't';rcMap['t'] = 'a';
@@ -85,6 +84,7 @@ class ProteinHandler{
 
 
 public:
+    QMap<QChar,QChar> rcMap; //reverse complement map;
     QMap<QString, QString> protein_map;
 
     ProteinHandler(QString dna_codon_file){
@@ -149,11 +149,20 @@ public:
     }
 
     QString reverseComplement(QString codon){
-        //three letters -- direct assignment is quicker.
-        return QString()\
-                .append(rcMap[codon[2]])\
-                .append(rcMap[codon[1]])\
-                .append(rcMap[codon[0]]);
+        if (codon.length()==3){
+            //three letters -- direct assignment is quicker.
+            return QString()\
+                    .append(rcMap[codon[2]])\
+                    .append(rcMap[codon[1]])\
+                    .append(rcMap[codon[0]]);
+        }
+
+        //Otherwise reverse loop
+        QString out;
+        for (int i = codon.length()-1; i >=0; i--){
+            out.append(rcMap[codon[i]]);
+        }
+        return out;
     }
 
     const char * proteins2mutation(QString ref_protein, QString alt_protein){
