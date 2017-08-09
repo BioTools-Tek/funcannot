@@ -185,15 +185,21 @@ QStringList Appender::getLists(QString &chr, quint64 &bpos, QStringList &genelis
                 // Exons -- coding!
                 QString num_extra = detail.split("Exon")[1];
                 if(num_extra.contains("_")){
-                    // Splice
-                    QStringList deets = num_extra.split("_");
+                    if (num_extra.contains("Splice")){
+                        // Splice
+                        QStringList deets = num_extra.split("_");
 
-                    // Donor gives, Acceptor recieves
-                    bool upstream = deets[1].split("Splice")[1] == "D";
-                    num_extra = deets[0];
+                        // Donor gives, Acceptor recieves
+                        bool upstream = deets[1].split("Splice")[1] == "D";
+                        num_extra = deets[0];
 
-                    regulatory_val  = Splice_UTR;
-                    regulatory_type = upstream?Upstream:Downstream;
+                        regulatory_val  = Splice_UTR;
+                        regulatory_type = upstream?Upstream:Downstream;
+                    }
+                    else if (num_extra.contains("UTR")) {
+                        rejects_per_line.append(BSta + gene + BEnd + ',');
+                        skipbad;
+                    }
                 }
                 exon_number = num_extra.toInt();
             }
